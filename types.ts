@@ -1,11 +1,32 @@
+export type Gender = 'Male' | 'Female';
 
 export interface Character {
   id: string;
   name: string;
-  age: string;
-  personality: string;
+  // Step 1: Identity
+  gender: Gender;
+  age: string; // e.g., "Teen", "Adult", "Elderly"
+  species: string;
+  role: string; // e.g., "Protagonist", "Antagonist", "Mentor"
+  // Step 2: Personality
+  personalityArchetypes: string[];
+  moralAlignment: string;
+  motivations: string[];
+  fears: string[];
+  // Step 3: Appearance
+  appearance: {
+    height: string;
+    build: string;
+    hairColor: string;
+    eyeColor: string;
+    distinctiveFeatures: string;
+  };
+  // Step 4: Backstory
   backstory: string;
+  // Step 5: Relationships
   relationships: string;
+  // Step 6: Voice
+  dialogueStyle: string;
 }
 
 export interface World {
@@ -44,4 +65,12 @@ export enum View {
   CHARACTERS = 'CHARACTERS',
   WORLDS = 'WORLDS',
   TIMELINE = 'TIMELINE',
+}
+
+export type Locale = 'en' | 'ar' | 'ja';
+
+export interface User {
+  id: string;
+  name?: string;
+  email: string;
 }

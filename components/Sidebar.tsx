@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { View } from '../types';
 import { useAppContext } from '../contexts/AppContext';
+import { useLocalization } from '../contexts/LocalizationContext';
 
 interface SidebarProps {
   activeView: View;
@@ -10,11 +10,18 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
   const { stories, activeStoryId, setActiveStoryId, addStory, deleteStory } = useAppContext();
+  const { t } = useLocalization();
 
   const handleCreateStory = () => {
-    const title = prompt("Enter new story title:");
+    const title = prompt(t('enter_story_title_prompt'));
     if (title) {
         addStory(title);
+    }
+  }
+
+  const handleDeleteStory = () => {
+    if (activeStoryId && confirm(t('confirm_delete_story'))) {
+        deleteStory(activeStoryId);
     }
   }
 
@@ -26,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
       </div>
 
       <div className="mb-4">
-        <label htmlFor="story-select" className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Current Story</label>
+        <label htmlFor="story-select" className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{t('current_story')}</label>
         <div className="flex items-center gap-2">
             <select
               id="story-select"
@@ -39,21 +46,21 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
               ))}
             </select>
             {activeStoryId && (
-                <button onClick={() => deleteStory(activeStoryId)} className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+                <button onClick={handleDeleteStory} className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors" title={t('delete_story')}>
                     <TrashIcon className="h-4 w-4" />
                 </button>
             )}
         </div>
       </div>
       <button onClick={handleCreateStory} className="w-full mb-6 py-2 px-4 bg-primary-600 text-white rounded-md text-sm font-semibold hover:bg-primary-700 transition-colors flex items-center justify-center gap-2">
-        <PlusIcon className="h-4 w-4" /> New Story
+        <PlusIcon className="h-4 w-4" /> {t('new_story')}
       </button>
 
       <nav className="flex-1 space-y-2">
-        <NavItem icon={<PencilIcon className="h-5 w-5" />} label="Story Editor" view={View.STORY_EDITOR} activeView={activeView} onClick={setActiveView} />
-        <NavItem icon={<UsersIcon className="h-5 w-5" />} label="Characters" view={View.CHARACTERS} activeView={activeView} onClick={setActiveView} />
-        <NavItem icon={<GlobeIcon className="h-5 w-5" />} label="Worlds" view={View.WORLDS} activeView={activeView} onClick={setActiveView} />
-        <NavItem icon={<ListIcon className="h-5 w-5" />} label="Timeline" view={View.TIMELINE} activeView={activeView} onClick={setActiveView} />
+        <NavItem icon={<PencilIcon className="h-5 w-5" />} label={t('story_editor')} view={View.STORY_EDITOR} activeView={activeView} onClick={setActiveView} />
+        <NavItem icon={<UsersIcon className="h-5 w-5" />} label={t('characters')} view={View.CHARACTERS} activeView={activeView} onClick={setActiveView} />
+        <NavItem icon={<GlobeIcon className="h-5 w-5" />} label={t('worlds')} view={View.WORLDS} activeView={activeView} onClick={setActiveView} />
+        <NavItem icon={<ListIcon className="h-5 w-5" />} label={t('timeline')} view={View.TIMELINE} activeView={activeView} onClick={setActiveView} />
       </nav>
       
       <div className="mt-auto text-center text-xs text-gray-400 dark:text-gray-500">

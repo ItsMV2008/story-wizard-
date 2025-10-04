@@ -2,19 +2,27 @@
 import { GoogleGenAI, Chat, Type } from '@google/genai';
 import { Character, World, Story } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
-
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-2.5-flash';
 
 export const generateCharacterProfile = async (description: string): Promise<Partial<Character>> => {
   try {
-    const prompt = `Based on the following description, create a detailed character profile.
+    const prompt = `Based on the following description, create a detailed character profile for a story.
     Description: "${description}"
     
-    Return a JSON object with the following fields: 'personality', 'backstory', and 'relationships'.`;
+    Return a JSON object with the full character structure. Populate all fields with creative and consistent details.
+    - gender: Must be either 'Male' or 'Female'.
+    - age: A general age range (e.g., "Young Adult", "Middle-Aged", "Ancient").
+    - species: (e.g., "Human", "Elf", "Cyborg").
+    - role: Their role in a story (e.g., "Protagonist", "Villain", "Comic Relief").
+    - personalityArchetypes: An array of 3-4 descriptive words (e.g., "Brave", "Cynical", "Impulsive").
+    - moralAlignment: A classic alignment (e.g., "Lawful Good", "Chaotic Neutral", "True Neutral").
+    - motivations: An array of 1-2 core driving forces (e.g., "Seeks revenge", "Wants to protect family").
+    - fears: An array of 1-2 significant fears (e.g., "Fears failure", "Afraid of being alone").
+    - appearance: An object with height, build, hairColor, eyeColor, and distinctiveFeatures.
+    - backstory: A 2-3 sentence summary.
+    - relationships: A 1-2 sentence summary of their key relationships.
+    - dialogueStyle: A short description of how they speak (e.g., "Speaks in short, direct sentences", "Uses witty and sarcastic language").`;
 
     const response = await ai.models.generateContent({
       model,
@@ -24,11 +32,30 @@ export const generateCharacterProfile = async (description: string): Promise<Par
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            personality: { type: Type.STRING, description: 'The character\'s personality traits.' },
+            gender: { type: Type.STRING, enum: ['Male', 'Female'], description: "The character's gender." },
+            age: { type: Type.STRING, description: "The character's age range." },
+            species: { type: Type.STRING, description: "The character's species." },
+            role: { type: Type.STRING, description: "The character's role in the story." },
+            personalityArchetypes: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'A list of personality traits.' },
+            moralAlignment: { type: Type.STRING, description: 'The character\'s moral alignment.' },
+            motivations: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'The character\'s primary motivations.' },
+            fears: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'The character\'s primary fears.' },
+            appearance: {
+                type: Type.OBJECT,
+                properties: {
+                    height: { type: Type.STRING },
+                    build: { type: Type.STRING },
+                    hairColor: { type: Type.STRING },
+                    eyeColor: { type: Type.STRING },
+                    distinctiveFeatures: { type: Type.STRING },
+                },
+                required: ['height', 'build', 'hairColor', 'eyeColor', 'distinctiveFeatures']
+            },
             backstory: { type: Type.STRING, description: 'A brief backstory for the character.' },
             relationships: { type: Type.STRING, description: 'Key relationships the character has.' },
+            dialogueStyle: { type: Type.STRING, description: 'The character\'s style of speaking.' },
           },
-          required: ['personality', 'backstory', 'relationships'],
+          required: ['gender', 'age', 'species', 'role', 'personalityArchetypes', 'moralAlignment', 'motivations', 'fears', 'appearance', 'backstory', 'relationships', 'dialogueStyle'],
         }
       },
     });

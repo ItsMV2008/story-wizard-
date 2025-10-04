@@ -1,7 +1,7 @@
-
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Story, Character, World, Chapter } from '../types';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
   stories: Story[];
@@ -25,8 +25,19 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [stories, setStories] = useLocalStorage<Story[]>('storywizard-stories', []);
-  const [activeStoryId, setActiveStoryId] = useLocalStorage<string | null>('storywizard-activeStoryId', null);
+  const { user } = useAuth();
+  
+  if (!user) {
+    // This should not happen if AppProvider is used correctly within an authenticated context
+    return <>{children}</>;
+  }
+
+  // User-specific keys for localStorage
+  const storiesKey = `storywizard-stories-${user.id}`;
+  const activeStoryIdKey = `storywizard-activeStoryId-${user.id}`;
+
+  const [stories, setStories] = useLocalStorage<Story[]>(storiesKey, []);
+  const [activeStoryId, setActiveStoryId] = useLocalStorage<string | null>(activeStoryIdKey, null);
 
   useEffect(() => {
     if(!activeStoryId && stories.length > 0) {
@@ -36,7 +47,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveStoryId(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stories]);
+  }, [stories, user.id]);
 
   const findStory = (storyId: string) => {
     const story = stories.find(s => s.id === storyId);
@@ -68,10 +79,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }
 
   const deleteStory = (storyId: string) => {
-    setStories(prev => prev.filter(s => s.id !== storyId));
-    if (activeStoryId === storyId) {
-      setActiveStoryId(stories.length > 1 ? stories.find(s => s.id !== storyId)!.id : null);
-    }
+    setStories(prev => {
+        const remainingStories = prev.filter(s => s.id !== storyId);
+        if (activeStoryId === storyId) {
+            setActiveStoryId(remainingStories.length > 0 ? remainingStories[0].id : null);
+        }
+        return remainingStories;
+    });
   }
 
   const addCharacter = (storyId: string, characterData: Omit<Character, 'id'>) => {
