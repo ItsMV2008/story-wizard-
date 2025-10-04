@@ -17,7 +17,9 @@ root.render(
     <ThemeProvider>
       <LocalizationProvider>
         <AuthProvider>
-          <App />
+          <AppProvider>
+            <App />
+          </AppProvider>
         </AuthProvider>
       </LocalizationProvider>
     </ThemeProvider>

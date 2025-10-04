@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { Story, Character, World, Chapter } from '../types';
+import { Story, Character, World, Chapter, Item, Illustration } from '../types';
 import { useAuth } from './AuthContext';
 
 interface AppContextType {
@@ -10,6 +10,7 @@ interface AppContextType {
   updateStory: (story: Story) => void;
   deleteStory: (storyId: string) => void;
   setActiveStoryId: (storyId: string | null) => void;
+  cloneStory: (story: Story) => void; // Add cloneStory
   addCharacter: (storyId: string, character: Omit<Character, 'id'>) => void;
   updateCharacter: (storyId: string, character: Character) => void;
   deleteCharacter: (storyId: string, characterId: string) => void;
@@ -20,6 +21,10 @@ interface AppContextType {
   updateChapter: (storyId: string, chapter: Chapter) => void;
   deleteChapter: (storyId: string, chapterId: string) => void;
   updateChaptersOrder: (storyId: string, chapters: Chapter[]) => void;
+  addItem: (storyId: string, item: Omit<Item, 'id'>) => void;
+  updateItem: (storyId: string, item: Item) => void;
+  deleteItem: (storyId: string, itemId: string) => void;
+  addIllustration: (storyId: string, illustration: Omit<Illustration, 'id'>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -27,27 +32,28 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   
-  if (!user) {
-    // This should not happen if AppProvider is used correctly within an authenticated context
-    return <>{children}</>;
-  }
-
-  // User-specific keys for localStorage
-  const storiesKey = `storywizard-stories-${user.id}`;
-  const activeStoryIdKey = `storywizard-activeStoryId-${user.id}`;
+  const storiesKey = user ? `storywizard-stories-${user.id}` : 'storywizard-stories-nouser';
+  const activeStoryIdKey = user ? `storywizard-activeStoryId-${user.id}` : 'storywizard-activeStoryId-nouser';
 
   const [stories, setStories] = useLocalStorage<Story[]>(storiesKey, []);
   const [activeStoryId, setActiveStoryId] = useLocalStorage<string | null>(activeStoryIdKey, null);
-
+  
   useEffect(() => {
-    if(!activeStoryId && stories.length > 0) {
-        setActiveStoryId(stories[0].id);
-    }
-    if(stories.length === 0) {
+    if (!user) {
+        setStories([]);
         setActiveStoryId(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stories, user.id]);
+  }, [user, setStories, setActiveStoryId]);
+
+
+  useEffect(() => {
+    if(user && !activeStoryId && stories.length > 0) {
+        setActiveStoryId(stories[0].id);
+    }
+    if(user && stories.length === 0) {
+        setActiveStoryId(null);
+    }
+  }, [stories, user, setActiveStoryId]);
 
   const findStory = (storyId: string) => {
     const story = stories.find(s => s.id === storyId);
@@ -69,10 +75,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       chapters: [],
       characters: [],
       worlds: [],
+      items: [],
+      illustrations: [],
     };
     setStories(prev => [...prev, newStory]);
     setActiveStoryId(newStory.id);
   };
+  
+  const cloneStory = (storyToClone: Story) => {
+    // Deep copy and assign new IDs to nested objects to prevent reference issues.
+    const newStory: Story = {
+      ...JSON.parse(JSON.stringify(storyToClone)),
+      id: crypto.randomUUID(),
+      author: undefined, // Remove community author
+    };
+    newStory.characters.forEach(c => c.id = crypto.randomUUID());
+    newStory.worlds.forEach(w => w.id = crypto.randomUUID());
+    newStory.chapters.forEach(c => c.id = crypto.randomUUID());
+    newStory.items.forEach(i => i.id = crypto.randomUUID());
+    newStory.illustrations = []; // Don't clone illustrations
+
+    setStories(prev => [...prev, newStory]);
+    setActiveStoryId(newStory.id);
+  };
+
 
   const updateStory = (story: Story) => {
     updateStoryInList(story);
@@ -88,71 +114,109 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }
 
+  // Characters
   const addCharacter = (storyId: string, characterData: Omit<Character, 'id'>) => {
     const story = findStory(storyId);
     const newCharacter: Character = { ...characterData, id: crypto.randomUUID() };
     const updatedStory = { ...story, characters: [...story.characters, newCharacter] };
     updateStoryInList(updatedStory);
   };
-  
   const updateCharacter = (storyId: string, character: Character) => {
     const story = findStory(storyId);
     const updatedChars = story.characters.map(c => c.id === character.id ? character : c);
     updateStoryInList({ ...story, characters: updatedChars });
   };
-  
   const deleteCharacter = (storyId: string, characterId: string) => {
     const story = findStory(storyId);
     const updatedChars = story.characters.filter(c => c.id !== characterId);
     updateStoryInList({ ...story, characters: updatedChars });
   };
   
+  // Worlds
   const addWorld = (storyId: string, worldData: Omit<World, 'id'>) => {
     const story = findStory(storyId);
     const newWorld: World = { ...worldData, id: crypto.randomUUID() };
     updateStoryInList({ ...story, worlds: [...story.worlds, newWorld] });
   };
-
   const updateWorld = (storyId: string, world: World) => {
     const story = findStory(storyId);
     const updatedWorlds = story.worlds.map(w => w.id === world.id ? world : w);
     updateStoryInList({ ...story, worlds: updatedWorlds });
   };
-  
   const deleteWorld = (storyId: string, worldId: string) => {
     const story = findStory(storyId);
     const updatedWorlds = story.worlds.filter(w => w.id !== worldId);
     updateStoryInList({ ...story, worlds: updatedWorlds });
   };
 
+  // Chapters
   const addChapter = (storyId: string, chapterData: Omit<Chapter, 'id'>) => {
     const story = findStory(storyId);
     const newChapter: Chapter = { ...chapterData, id: crypto.randomUUID() };
     updateStoryInList({ ...story, chapters: [...story.chapters, newChapter] });
   };
-
   const updateChapter = (storyId: string, chapter: Chapter) => {
     const story = findStory(storyId);
     const updatedChapters = story.chapters.map(c => c.id === chapter.id ? chapter : c);
     updateStoryInList({ ...story, chapters: updatedChapters });
   };
-  
   const deleteChapter = (storyId: string, chapterId: string) => {
     const story = findStory(storyId);
     const updatedChapters = story.chapters.filter(c => c.id !== chapterId);
     updateStoryInList({ ...story, chapters: updatedChapters });
   };
-
   const updateChaptersOrder = (storyId: string, chapters: Chapter[]) => {
     const story = findStory(storyId);
     updateStoryInList({...story, chapters: chapters});
   }
 
-  const value = {
-    stories, activeStoryId, addStory, updateStory, deleteStory, setActiveStoryId,
-    addCharacter, updateCharacter, deleteCharacter,
-    addWorld, updateWorld, deleteWorld,
-    addChapter, updateChapter, deleteChapter, updateChaptersOrder
+  // Items
+  const addItem = (storyId: string, itemData: Omit<Item, 'id'>) => {
+    const story = findStory(storyId);
+    const newItem: Item = { ...itemData, id: crypto.randomUUID() };
+    updateStoryInList({ ...story, items: [...story.items, newItem] });
+  };
+  const updateItem = (storyId: string, item: Item) => {
+    const story = findStory(storyId);
+    const updatedItems = story.items.map(i => i.id === item.id ? item : i);
+    updateStoryInList({ ...story, items: updatedItems });
+  };
+  const deleteItem = (storyId: string, itemId: string) => {
+    const story = findStory(storyId);
+    const updatedItems = story.items.filter(i => i.id !== itemId);
+    updateStoryInList({ ...story, items: updatedItems });
+  };
+
+  // Illustrations
+  const addIllustration = (storyId: string, illustrationData: Omit<Illustration, 'id'>) => {
+    const story = findStory(storyId);
+    const newIllustration: Illustration = { ...illustrationData, id: crypto.randomUUID() };
+    updateStoryInList({ ...story, illustrations: [...story.illustrations, newIllustration] });
+  };
+
+
+  const value: AppContextType = {
+    stories: user ? stories : [],
+    activeStoryId: user ? activeStoryId : null,
+    setActiveStoryId: user ? setActiveStoryId : () => {},
+    addStory: user ? addStory : () => {},
+    cloneStory: user ? cloneStory : () => {},
+    updateStory: user ? updateStory : () => {},
+    deleteStory: user ? deleteStory : () => {},
+    addCharacter: user ? addCharacter : () => {},
+    updateCharacter: user ? updateCharacter : () => {},
+    deleteCharacter: user ? deleteCharacter : () => {},
+    addWorld: user ? addWorld : () => {},
+    updateWorld: user ? updateWorld : () => {},
+    deleteWorld: user ? deleteWorld : () => {},
+    addChapter: user ? addChapter : () => {},
+    updateChapter: user ? updateChapter : () => {},
+    deleteChapter: user ? deleteChapter : () => {},
+    updateChaptersOrder: user ? updateChaptersOrder : () => {},
+    addItem: user ? addItem : () => {},
+    updateItem: user ? updateItem : () => {},
+    deleteItem: user ? deleteItem : () => {},
+    addIllustration: user ? addIllustration : () => {},
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

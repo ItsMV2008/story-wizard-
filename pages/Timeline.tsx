@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Story, Chapter } from '../types';
 import { useAppContext } from '../contexts/AppContext';
 import { useLocalization } from '../contexts/LocalizationContext';
@@ -8,9 +8,16 @@ interface TimelineProps {
 }
 
 const Timeline: React.FC<TimelineProps> = ({ story }) => {
-    const { addChapter, updateChapter, deleteChapter } = useAppContext();
+    const { addChapter, updateChapter, deleteChapter, updateChaptersOrder } = useAppContext();
     const [editingChapter, setEditingChapter] = useState<Partial<Chapter> | null>(null);
+    const [chapters, setChapters] = useState<Chapter[]>(story.chapters);
+    const dragItem = useRef<number | null>(null);
+    const dragOverItem = useRef<number | null>(null);
     const { t } = useLocalization();
+    
+    useEffect(() => {
+        setChapters(story.chapters);
+    }, [story.chapters]);
 
     const handleSave = () => {
         if (!editingChapter || !editingChapter.title) return;
@@ -28,6 +35,27 @@ const Timeline: React.FC<TimelineProps> = ({ story }) => {
         high: 'bg-orange-500',
         climax: 'bg-red-600',
     };
+
+    const handleDragStart = (index: number) => {
+        dragItem.current = index;
+    };
+
+    const handleDragEnter = (index: number) => {
+        dragOverItem.current = index;
+    };
+
+    const handleDrop = () => {
+        if (dragItem.current !== null && dragOverItem.current !== null) {
+            const newChapters = [...chapters];
+            const draggedItemContent = newChapters.splice(dragItem.current, 1)[0];
+            newChapters.splice(dragOverItem.current, 0, draggedItemContent);
+            dragItem.current = null;
+            dragOverItem.current = null;
+            setChapters(newChapters);
+            updateChaptersOrder(story.id, newChapters);
+        }
+    };
+    
 
     const renderForm = () => {
         if (!editingChapter) return null;
@@ -63,11 +91,19 @@ const Timeline: React.FC<TimelineProps> = ({ story }) => {
             </button>
         </div>
       <div className="relative pl-8 py-4 border-l-4 border-gray-300 dark:border-gray-600">
-        {story.chapters.length === 0 && (
+        {chapters.length === 0 && (
             <p className="text-gray-500">{t('timeline_empty')}</p>
         )}
-        {story.chapters.map((chapter, index) => (
-          <div key={chapter.id} className="mb-10 relative">
+        {chapters.map((chapter, index) => (
+          <div 
+            key={chapter.id} 
+            className="mb-10 relative cursor-grab"
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragEnter={() => handleDragEnter(index)}
+            onDragEnd={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+          >
             <div className={`absolute -left-[42px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full ${tensionColorMap[chapter.tensionLevel]} border-4 border-gray-100 dark:border-gray-900`}></div>
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
               <div className="flex justify-between items-start">

@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useTheme } from './contexts/ThemeContext';
-import { AppProvider, useAppContext } from './contexts/AppContext';
+import { useAppContext } from './contexts/AppContext';
 import Sidebar from './components/Sidebar';
 import StoryEditor from './pages/StoryEditor';
 import CharacterCreator from './pages/CharacterCreator';
 import WorldBuilder from './pages/WorldBuilder';
 import Timeline from './pages/Timeline';
+import StoryBible from './pages/StoryBible';
+import CommunityPage from './pages/CommunityPage'; // Import CommunityPage
 import { View } from './types';
 import Header from './components/Header';
 import { useAuth } from './contexts/AuthContext';
@@ -15,12 +17,7 @@ import { useLocalization } from './contexts/LocalizationContext';
 const App: React.FC = () => {
     const { user } = useAuth();
     
-    // The AppProvider is rendered here so it re-initializes with user-specific data upon login.
-    return user ? (
-      <AppProvider>
-        <MainApp />
-      </AppProvider>
-    ) : <LoginPage />;
+    return user ? <MainApp /> : <LoginPage />;
 };
 
 const MainApp: React.FC = () => {
@@ -33,6 +30,11 @@ const MainApp: React.FC = () => {
   }, [stories, activeStoryId]);
 
   const renderView = () => {
+    // Community Page is accessible without an active story
+    if (activeView === View.COMMUNITY) {
+        return <CommunityPage />;
+    }
+
     if (!activeStory) {
         return <NoStorySelected />;
     }
@@ -46,6 +48,9 @@ const MainApp: React.FC = () => {
         return <WorldBuilder story={activeStory} />;
       case View.TIMELINE:
         return <Timeline story={activeStory} />;
+      case View.STORY_BIBLE:
+        return <StoryBible story={activeStory} />;
+      // Community is handled above
       default:
         return <StoryEditor story={activeStory} />;
     }

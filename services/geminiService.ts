@@ -1,9 +1,10 @@
 
 import { GoogleGenAI, Chat, Type } from '@google/genai';
-import { Character, World, Story } from '../types';
+import { Character, World, Story, Chapter } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const model = 'gemini-2.5-flash';
+const textModel = 'gemini-2.5-flash';
+const imageModel = 'imagen-4.0-generate-001';
 
 export const generateCharacterProfile = async (description: string): Promise<Partial<Character>> => {
   try {
@@ -25,7 +26,7 @@ export const generateCharacterProfile = async (description: string): Promise<Par
     - dialogueStyle: A short description of how they speak (e.g., "Speaks in short, direct sentences", "Uses witty and sarcastic language").`;
 
     const response = await ai.models.generateContent({
-      model,
+      model: textModel,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -77,7 +78,7 @@ export const generateWorldDetails = async (description: string): Promise<Partial
         Return a JSON object with 'description', 'geography', and 'culture'.`;
         
         const response = await ai.models.generateContent({
-            model,
+            model: textModel,
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -114,9 +115,70 @@ export const createChatSession = (story: Story): Chat => {
     Keep your responses concise and focused on the user's request.`;
 
     return ai.chats.create({
-        model,
+        model: textModel,
         config: {
             systemInstruction
         }
     });
+};
+
+export const generateStorySynopsis = async (chapters: Chapter[]): Promise<string> => {
+    if (chapters.length === 0) return "This story doesn't have any chapters yet.";
+    
+    const chapterSummaries = chapters.map((ch, i) => `Chapter ${i+1}: ${ch.title}\nSummary: ${ch.content || 'No summary provided.'}`).join('\n\n');
+    const prompt = `Based on the following chapter summaries, write a compelling, one-paragraph synopsis for the entire story.\n\n${chapterSummaries}`;
+
+    try {
+        const response = await ai.models.generateContent({ model: textModel, contents: prompt });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating synopsis:", error);
+        throw new Error("Failed to generate story synopsis.");
+    }
+}
+
+export const generateItemImage = async (description: string): Promise<string> => {
+    const prompt = `A cinematic, high-detail, studio-quality photograph of a single fantasy item on a neutral background: ${description}.`;
+    try {
+        const response = await ai.models.generateImages({
+            model: imageModel,
+            prompt: prompt,
+            config: {
+                numberOfImages: 1,
+                outputMimeType: 'image/jpeg',
+                aspectRatio: '1:1'
+            }
+        });
+
+        if (response.generatedImages.length > 0) {
+            return response.generatedImages[0].image.imageBytes;
+        }
+        throw new Error('No image was generated.');
+    } catch (error) {
+        console.error("Error generating item image:", error);
+        throw new Error("Failed to generate item image.");
+    }
+}
+
+export const generateSceneIllustration = async (prompt: string): Promise<string> => {
+    const fullPrompt = `An evocative, painterly, digital art illustration of the following scene, capturing the mood and atmosphere: "${prompt}"`;
+     try {
+        const response = await ai.models.generateImages({
+            model: imageModel,
+            prompt: fullPrompt,
+            config: {
+                numberOfImages: 1,
+                outputMimeType: 'image/jpeg',
+                aspectRatio: '16:9'
+            }
+        });
+
+        if (response.generatedImages.length > 0) {
+            return response.generatedImages[0].image.imageBytes;
+        }
+        throw new Error('No image was generated.');
+    } catch (error) {
+        console.error("Error generating scene illustration:", error);
+        throw new Error("Failed to generate scene illustration.");
+    }
 }

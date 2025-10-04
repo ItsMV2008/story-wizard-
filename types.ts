@@ -44,6 +44,20 @@ export interface Chapter {
   tensionLevel: 'low' | 'medium' | 'high' | 'climax';
 }
 
+export interface Item {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+}
+
+export interface Illustration {
+  id: string;
+  prompt: string;
+  imageUrl: string;
+  chapterId: string;
+}
+
 export interface Story {
   id: string;
   title: string;
@@ -53,6 +67,9 @@ export interface Story {
   chapters: Chapter[];
   characters: Character[];
   worlds: World[];
+  items: Item[];
+  illustrations: Illustration[];
+  author?: string; // For community stories
 }
 
 export interface Message {
@@ -65,6 +82,8 @@ export enum View {
   CHARACTERS = 'CHARACTERS',
   WORLDS = 'WORLDS',
   TIMELINE = 'TIMELINE',
+  STORY_BIBLE = 'STORY_BIBLE',
+  COMMUNITY = 'COMMUNITY',
 }
 
 export type Locale = 'en' | 'ar' | 'ja';
